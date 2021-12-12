@@ -1,5 +1,8 @@
 import Chessboard from "chessboardjsx";
-import React, { useEffect, useState } from "react";
+import React, {
+  //useEffect,
+  useState
+} from "react";
 // import Chess from "chess.js";
 
 const INITIAL_POSITION = {
