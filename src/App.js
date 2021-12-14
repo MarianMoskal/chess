@@ -1,9 +1,8 @@
 import Chessboard from "chessboardjsx";
 import React, {
-  //useEffect,
+  useEffect,
   useState
 } from "react";
-// import Chess from "chess.js";
 
 const INITIAL_POSITION = {
     a3: 'wP', b3: 'wP', c3: 'wP', d3: 'wP', e3: 'wP', f3: 'wP', g3: 'wP', h3: 'wP', d1: 'wQ', e1: 'wK', a6: 'bP', b6: 'bP', c6: 'bP', d6: 'bP', e6: 'bP', f6: 'bP', g6: 'bP', h6: 'bP', d8: 'bQ', e8: 'bK'
@@ -12,74 +11,88 @@ const INITIAL_POSITION = {
 
 function App() {
   const [position, setPosition] = useState(INITIAL_POSITION)
+  const [newPosition, setNewPosition] = useState({})
   const [gameOver, setGameOver] = useState(false)
-  const [botMove, setBotMove] = useState(false)
+  const [botMove, setBotMove] = useState(false)   
 
-  console.log(botMove);
- 
+  useEffect(() => {
+    setNewPosition(Object.fromEntries(Object.entries(position)));
+  }, [position])
+
+  console.log(newPosition);
 
   const V = ['1', '2', '3', '4', '5', '6', '7', '8']
   const H = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
   const pieces = ['wP', 'bP', 'wQ', 'bQ', 'wK', 'bK']
   const white = pieces.filter((el) => el.includes('w'));
-  // const black = pieces.filter((el) => el.includes('b'));
+  
 
   const handleMove = ({ from, to, piece }) => {
-    console.log('handleMove');
+    // console.log('handle move', newPosition);
     console.log({ from, to, piece });
-   
-    const legalPieceMoves = legalMove(piece, H, V, from);
-    const newPosition = Object.fromEntries(Object.entries(position));
 
+    const legalPieceMoves = legalMove(piece, H, V, from);
     const piecesAndPositions = [];
     Object.entries(newPosition).flatMap(el => piecesAndPositions.push(...el));
-    
-    // if (botMove) {      
-    //     const botPiecesAndPositions = getBotAvailableMoveList(piecesAndPositions, black, legalMove, H, V)
-    //     const filteredBotMoves = botPiecesAndPositions.filter(el => el.length === 2);
-    //     const move = filteredBotMoves[Math.floor(Math.random() * filteredBotMoves.length)];
-    // }
-    
-    // console.log(legalPieceMoves);
+
     
     if (legalPieceMoves.includes(to)) {
       for (const el of Object.entries(newPosition)) {
-        const rule1 = piece[0] === piecesAndPositions[piecesAndPositions.indexOf(to) + 1][0]
+        const rule1 = piecesAndPositions.indexOf(to) !== -1 && piece[0] === piecesAndPositions[piecesAndPositions.indexOf(to) + 1][0]
         const rule2 = el[1].includes('P') && !piecesAndPositions.includes(to) && from[0] !== to[0]
         const rule3 = el[1].includes('P') && piecesAndPositions.includes(to) && from[0] === to[0]
 
+        if (botMove && el[0] === from) {
+          if (rule1 || rule2 || rule3) {
+           return setBotMove(true)
+          }
+        }
+
         if (el[0] === from) {
           if (rule1 || rule2 || rule3) {
-            setBotMove(true)
             return
           }
         }
       }
-
-      delete Object.assign(newPosition, { [to]: newPosition[from] })[from]; //?
       
+      // if (botMove && piecesAndPositions.includes(to)) {
+        delete newPosition[to];
+        delete newPosition[from];
+        newPosition[to] = `${piece}`;
+        // console.log('after', newPosition);
+
+      // }
+      // else {
+      //   delete Object.assign(newPosition, { [to]: piece })[from] //?
+      // }
+      //  console.log('after', newPosition);
+          
       if (piece[1] === 'P' && (to[1] === '1' || to[1] === '8')) {
         newPosition[to] = `${piece[0]}Q`
       }
-
+      
       setPosition(newPosition);
-      setBotMove(!botMove)
+
+      
+      if (!botMove) {
+        setBotMove(true)
+      }
+      setBotMove(false)
     }
   }
 
+
   if (botMove) {
-    setTimeout(() => {
-      const botMoves = Object.entries(position).filter(el => el[1].includes('b'))
+      const botMoves = Object.entries(newPosition).filter(el => el[1].includes('b'))
       const getMove = botMoves[Math.floor(Math.random() * botMoves.length)];
       const prepareMove = legalMove(getMove[1], H, V, getMove[0]).filter(el => el.length === 2)
       const move = prepareMove[Math.floor(Math.random() * prepareMove.length)]
-      console.log(move);
       handleMove({ from: getMove[0], to: move, piece: getMove[1]})
-    }, 300);
-  }
+    }
 
-  const handleDrag = ({ piece, sourceSquare }) => {
-    if (botMove === false && white.includes(piece)) {
+
+  const handleDrag = ({ piece }) => {
+    if (!botMove && white.includes(piece)) {
       return true
     }
   }
@@ -91,12 +104,12 @@ function App() {
 
   return (
     <>
-    <div>
+    <div style = {{display: "flex", justifyContent:'center'}}>
       <Chessboard
         position={position}
         draggable={!gameOver}
         allowDrag={(x) => handleDrag(x)}
-        calcWidth={({ screenWidth }) => screenWidth / 2.5}
+        calcWidth={({ screenWidth }) => screenWidth / 2.2}
         getPosition={(x) => {
           const arr = Object.values(x);
           if (!arr.includes('wK') || !arr.includes('bK')) {
@@ -104,13 +117,13 @@ function App() {
           }
         }}
         onDrop={
-         ({sourceSquare,targetSquare, piece}) =>
-          handleMove({
-            from: sourceSquare,
-            to: targetSquare,
-            piece: piece 
-          })
-        }
+          ({ sourceSquare, targetSquare, piece }) => 
+            handleMove({
+              from: sourceSquare,
+              to: targetSquare,
+              piece: piece
+            })
+          }
       />
       </div>
       {gameOver
@@ -126,23 +139,6 @@ function App() {
 export default App;
 
 
-// const getBotAvailableMoveList = (piecesAndPositions, black, legalMove, H, V) => {
-//       const positionList = []
-//       const moveList = [];
-//       for (let i = 0; i < piecesAndPositions.length; i++) {
-//         const el = piecesAndPositions[i];
-//         if (black.includes(el)) {
-//           positionList.push([piecesAndPositions[i - 1], piecesAndPositions[i]])
-//         }
-//       }
-//    for (let i = 0; i < positionList.length; i++) {
-//      const el = positionList[i];
-//      const result = legalMove(el[1], H, V, el[0])
-//     //  console.log(result);
-//      moveList.push(...result)
-//    }
-//   return(moveList);
-//   }
 
   const legalMove = (piece, arrH, arrV, pos) => {
     if (piece === 'wP') {
